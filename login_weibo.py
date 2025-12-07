@@ -182,7 +182,7 @@ def run():
         context = p.chromium.launch_persistent_context(
             user_data_dir=USER_DATA_DIR,
             headless=False,
-            channel="chrome",
+            channel="msedge",
             # 1. 核心步骤：告诉 Playwright 忽略默认的自动化参数
             # 这步操作直接去掉了“Chrome 正受到自动测试软件的控制”的横幅
             # ignore_default_args=["--enable-automation"],

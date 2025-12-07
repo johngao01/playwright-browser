@@ -49,18 +49,14 @@ class InstagramLoginHandler:
 
     def handle_response(self, response):
         # 1. 基础过滤：只处理我们关心的 URL 且必须是 POST
-        if "graphql/query" in response.url and response.request.method == "POST":
+        if (("graphql/query" in response.url and response.request.method == "POST")
+                or 'api/v1/discover/web/explore_grid' in response.url):
             # 2. 状态码过滤：如果是 302 跳转或 204 无内容，直接跳过，否则 .json() 必报错
             if not (200 <= response.status < 300):
                 return
-            try:
-                # 3. 获取 POST 请求体数据
-                # post_data 通常是 key=value&key2=value2 格式的字符串
-                post_body_str = response.request.post_data
-                if not post_body_str:
-                    return
-            except Exception:
-                return
+            # 3. 获取 POST 请求体数据
+            # post_data 通常是 key=value&key2=value2 格式的字符串
+            post_body_str = response.request.post_data or ''
             # 4. 【关键修改】获取响应体时的防御性处理
             try:
                 # 尝试获取 JSON 数据

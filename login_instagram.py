@@ -3,6 +3,7 @@ import traceback
 import json
 import os
 import asyncio
+import aiofiles
 from playwright.async_api import async_playwright, ProxySettings
 
 site = "instagram.com"
@@ -10,12 +11,24 @@ username = 'neverblock11'
 password = 'swdawfadffg42158'
 COOKIE_FILE = f'cookies/{username}.txt'
 user_url = 'https://www.instagram.com/{}/'.format(username)
-posts = []
+
+
+async def save_json(path, data):
+    """
+    通用异步保存 JSON 函数
+    """
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        async with aiofiles.open(path, 'w', encoding='utf8') as f:
+            # json.dumps 是 CPU 操作，write 是 IO 操作
+            await f.write(json.dumps(data, ensure_ascii=False, indent=4))
+    except Exception as e:
+        print(f"❌ 异步保存文件失败 {path}: {e}")
 
 
 def extract_posts_recursively(data):
     """
-    递归遍历字典或列表 (纯 CPU 逻辑，无需改为 async)
+    递归遍历字典或列表 (CPU 密集型逻辑，保持同步)
     """
     found_posts = []
 
@@ -36,57 +49,82 @@ def extract_posts_recursively(data):
     return found_posts
 
 
-# 2. 改为 async def
+async def process_and_save_post(post, save_dir):
+    """
+    处理并保存单个帖子（作为并发任务单元）
+    """
+    try:
+        author_username = post['user']['username']
+        code = post['code']
+        json_path = os.path.join(save_dir, author_username, f'{code}.json')
+
+        await save_json(json_path, post)
+
+        # 仅打印日志，不阻塞
+        print(f"💾 Saved Post: @{author_username} -> https://www.instagram.com/p/{code}")
+    except Exception as e:
+        print(f"保存单条帖子失败: {e}")
+
+
 async def handle_response(response):
-    # 1. 基础过滤
-    if (("graphql/query" in response.url and response.request.method == "POST")
-            or 'api/v1/discover/web/explore_grid' in response.url):
+    # 1. 基础过滤：URL 和 状态码
+    target_urls = ["graphql/query", "api/v1/discover/web/explore_grid"]
+    if not any(sub in response.url for sub in target_urls):
+        return
 
-        if not (200 <= response.status < 300):
-            return
+    if not (200 <= response.status < 300):
+        return
 
+    # 2. 获取数据
+    try:
+        # 预先获取 post_data，不需要 await
         post_body_str = response.request.post_data or ''
+        # 获取 JSON 需要 await
+        data = await response.json()
+    except Exception:
+        # 忽略无法解析 JSON 的响应（如图片资源误入等）
+        return
 
-        try:
-            data = await response.json()
-        except Exception as e:
-            print(f"⚠️ 无法获取响应体: {e}")
-            return
-
-        try:
-            if "PolarisProfilePageContentQuery" in post_body_str:
+    try:
+        # 3. 业务逻辑分流
+        if "PolarisProfilePageContentQuery" in post_body_str:
+            # === 处理用户主页信息 ===
+            try:
                 user = data['data']['user']
                 profile_name = user['username']
                 save_path = os.path.join('data/instagram/profiles/json', profile_name, f'{profile_name}.json')
-                os.makedirs(os.path.dirname(save_path), exist_ok=True)
-                # 文件 IO 保持同步即可，除非数据量极大才需要 aiofiles
-                with open(save_path, 'w', encoding='utf8') as f:
-                    json.dump(user, f, ensure_ascii=False, indent=4)
-                print(f"\n🔍 捕获到用户主页 {profile_name} 请求")
-            else:
-                if 'PolarisProfilePostsQuery' in post_body_str:
-                    save_dir = f'data/instagram/profiles/json/'
-                elif 'PolarisProfilePostsTabContentQuery_connection' in post_body_str:
-                    save_dir = f'data/instagram/profiles/json/'
-                else:
-                    save_dir = f'data/instagram/explore/json/'
 
-                profile_posts = extract_posts_recursively(data)
-                posts.extend(profile_posts)
-                for post in profile_posts:
-                    try:
-                        author_username = post['user']['username']
-                        code = post['code']
-                        json_path = os.path.join(save_dir, author_username, f'{code}.json')
-                        os.makedirs(os.path.dirname(json_path), exist_ok=True)
-                        with open(json_path, 'w', encoding='utf8') as f:
-                            json.dump(post, f, ensure_ascii=False, indent=4)
-                        print(f"💾 Saved Post: @{author_username} -> https://www.instagram.com/p/{code} -> {json_path}")
-                    except Exception as e:
-                        print(e)
-        except Exception as e:
-            traceback.print_exc()
-            print(f"处理业务逻辑出错: {e}")
+                # 异步保存
+                await save_json(save_path, user)
+                print(f"\n🔍 捕获到用户主页 {profile_name} 请求")
+            except KeyError:
+                pass
+
+        else:
+            # === 处理帖子列表 ===
+            if 'PolarisProfilePostsQuery' in post_body_str:
+                save_dir = f'data/instagram/profiles/json/'
+            elif 'PolarisProfilePostsTabContentQuery_connection' in post_body_str:
+                save_dir = f'data/instagram/profiles/json/'
+            else:
+                save_dir = f'data/instagram/explore/json/'
+
+            # 提取数据 (CPU)
+            profile_posts = extract_posts_recursively(data)
+            if not profile_posts:
+                return
+
+            # === 并发保存 (IO) ===
+            # 创建所有保存任务
+            tasks = [process_and_save_post(post, save_dir) for post in profile_posts]
+
+            # 并发执行
+            if tasks:
+                await asyncio.gather(*tasks)
+
+    except Exception as e:
+        traceback.print_exc()
+        print(f"处理业务逻辑出错: {e}")
 
 
 async def login(context, page):
@@ -96,27 +134,36 @@ async def login(context, page):
     print("正在检测登录状态...")
 
     login_link = page.get_by_role("link", name=username, exact=True)
+
     if await login_link.is_visible():
         print(">>> 已登录")
     else:
-        print(">>> 未登录")
+        print(">>> 未登录，开始尝试自动登录...")
         await page.get_by_role("textbox", name="电话号码、账号或邮箱").click()
-        await page.get_by_role("textbox", name="电话号码、账号或邮箱").fill("neverblock11")
+        await page.get_by_role("textbox", name="电话号码、账号或邮箱").fill(username)  # 使用变量
         await page.get_by_role("textbox", name="密码").click()
-        await page.get_by_role("textbox", name="密码").fill("swdawfadffg42158")
+        await page.get_by_role("textbox", name="密码").fill(password)  # 使用变量
         await page.get_by_role("button", name="登录").click()
 
+        # 处理弹窗
         try:
             await page.get_by_role("button", name="保存信息").click()
             print("保存信息")
         except Exception:
-            print("保存信息未点击")
+            print("保存信息: 未出现或点击失败")
 
         try:
             await page.get_by_role("button", name="确定").click()
             print("点击确定")
         except Exception:
-            print("点击确定未点击")
+            pass
+
+        try:
+            not_now_btn = page.get_by_role("button", name="以后再说")
+            await not_now_btn.click(timeout=3000)
+            print("通知弹窗: 点击以后再说")
+        except Exception:
+            pass
 
 
 async def save_cookies(context):
@@ -126,8 +173,11 @@ async def save_cookies(context):
         cookie_string = "; ".join(f"{c['name']}={c['value']}" for c in filtered)
 
         os.makedirs(os.path.dirname(COOKIE_FILE), exist_ok=True)
-        with open(COOKIE_FILE, "w", encoding="utf-8") as f:
-            f.write(cookie_string)
+
+        # 异步写入 Cookie
+        async with aiofiles.open(COOKIE_FILE, "w", encoding="utf-8") as f:
+            await f.write(cookie_string)
+
         print(f"🍪 Instagram cookies 保存完成")
     except Exception as e:
         print(f"保存失败: {e}")
@@ -155,13 +205,13 @@ async def run():
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         )
 
-        await  login(context, context.pages[0])
-        await  save_cookies(context)
+        page = context.pages[0]
+        await login(context, page)
+        await save_cookies(context)
 
         print("\n>>> 程序挂起中，关闭窗口退出...")
         await context.wait_for_event("close", timeout=0)
 
 
 if __name__ == "__main__":
-    # 12. 使用 asyncio.run
     asyncio.run(run())

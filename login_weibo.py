@@ -4,9 +4,14 @@ import os
 import re
 import asyncio
 from datetime import datetime
-
-# 1. 更改导入为 async_playwright
 from playwright.async_api import async_playwright
+
+site = "weibo.com"
+COOKIE_FILE = 'cookies/johnjohn01.txt'
+weibo_list = []
+username = ''
+userid = ''
+user_url = ''
 
 
 def standardize_date(created_at):
@@ -47,148 +52,138 @@ def parse_weibo(weibo, save_dir):
     print("-" * 50)
 
 
-class WeiboLoginHandler:
-    site = "weibo.com"
-    COOKIE_FILE = 'cookies/johnjohn01.txt'
-    weibo_list = []
-    username = ''
-    userid = ''
-    user_url = ''
+# 2. 改为 async def，因为 playwright 的 response.json() 在异步模式下需要 await
+async def handle_response(response):
+    # 拦截并解析 主页时间流 微博
+    if "unreadfriendstimeline" in response.url and response.status == 200:
+        save_dir = f'data/weibo/explore/json/'
+        try:
+            # 3. await response.json()
+            data = await response.json()
+            print("=" * 20 + " 微博信息流数据 " + "=" * 20)
+            statuses = data.get('statuses', [])
+            if not statuses:
+                print("未找到微博列表数据")
+                return
+            for i, weibo in enumerate(statuses):
+                try:
+                    weibo_list.append(weibo)
+                    # parse_weibo 是同步函数，可以直接调用
+                    parse_weibo(weibo, save_dir)
+                except Exception as inner_e:
+                    print(f"解析第 {i} 条微博时出错: {inner_e}")
+        except Exception as e:
+            print(f"响应内容解析失败: {e}")
 
-    def __init__(self, context):
-        self.context = context
-
-    # 2. 改为 async def，因为 playwright 的 response.json() 在异步模式下需要 await
-    async def handle_response(self, response):
-        # 拦截并解析 主页时间流 微博
-        if "unreadfriendstimeline" in response.url and response.status == 200:
-            save_dir = f'data/weibo/explore/json/'
-            try:
-                # 3. await response.json()
-                data = await response.json()
-                print("=" * 20 + " 微博信息流数据 " + "=" * 20)
-                statuses = data.get('statuses', [])
-                if not statuses:
-                    print("未找到微博列表数据")
-                    return
-                for i, weibo in enumerate(statuses):
-                    try:
-                        self.weibo_list.append(weibo)
-                        # parse_weibo 是同步函数，可以直接调用
-                        parse_weibo(weibo, save_dir)
-                    except Exception as inner_e:
-                        print(f"解析第 {i} 条微博时出错: {inner_e}")
-            except Exception as e:
-                print(f"响应内容解析失败: {e}")
-
-        elif '/ajax/profile/info?uid=' in response.url and response.status == 200:
-            try:
-                data = await response.json()
-                username = data['data']['user']['screen_name']
-                save_dir = f'data/weibo/profiles/json/'
-                json_path = os.path.join(save_dir, username, f'{username}.json')
-                os.makedirs(os.path.dirname(json_path), exist_ok=True)
-                with open(json_path, 'w', encoding='utf8') as f:
-                    json.dump(data, f, ensure_ascii=False, indent=4)
-                print(f"已保存用户 {username} 的信息 -> {json_path}")
-            except Exception as e:
-                print(e)
-
-        elif 'ajax/statuses/mymblog?uid=' in response.url and response.status == 200:
+    elif '/ajax/profile/info?uid=' in response.url and response.status == 200:
+        try:
+            data = await response.json()
+            username = data['data']['user']['screen_name']
             save_dir = f'data/weibo/profiles/json/'
-            try:
-                data = await response.json()
-                print("=" * 20 + " 微博信息流数据 " + "=" * 20)
-                statuses = data['data']['list']
-                if not statuses:
-                    print("未找到微博列表数据")
-                    return
-                for i, weibo in enumerate(statuses):
-                    try:
-                        self.weibo_list.append(weibo)
-                        parse_weibo(weibo, save_dir)
-                    except Exception as inner_e:
-                        print(f"解析第 {i} 条微博时出错: {inner_e}")
-            except Exception as e:
-                print(f"响应内容解析失败: {e}")
+            json_path = os.path.join(save_dir, username, f'{username}.json')
+            os.makedirs(os.path.dirname(json_path), exist_ok=True)
+            with open(json_path, 'w', encoding='utf8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            print(f"已保存用户 {username} 的信息 -> {json_path}")
+        except Exception as e:
+            print(e)
 
-    async def extract_user_info(self, page):
-        print("正在提取用户信息...")
+    elif 'ajax/statuses/mymblog?uid=' in response.url and response.status == 200:
+        save_dir = f'data/weibo/profiles/json/'
         try:
-            # 4. Locator 操作改为 await
-            profile_anchor = page.locator('div.woo-tab-nav a[href^="/u/"]').first
-            await profile_anchor.wait_for(timeout=5000)
+            data = await response.json()
+            print("=" * 20 + " 微博信息流数据 " + "=" * 20)
+            statuses = data['data']['list']
+            if not statuses:
+                print("未找到微博列表数据")
+                return
+            for i, weibo in enumerate(statuses):
+                try:
+                    weibo_list.append(weibo)
+                    parse_weibo(weibo, save_dir)
+                except Exception as inner_e:
+                    print(f"解析第 {i} 条微博时出错: {inner_e}")
+        except Exception as e:
+            print(f"响应内容解析失败: {e}")
 
-            href = await profile_anchor.get_attribute("href")
-            self.userid = href.split("/")[-1]
-            self.user_url = f"https://weibo.com{href}" if href.startswith("/") else href
 
-            username_div = profile_anchor.locator('.woo-tab-item-main')
-            self.username = await username_div.get_attribute("aria-label")
+async def extract_user_info(page):
+    print("正在提取用户信息...")
+    try:
+        # 4. Locator 操作改为 await
+        profile_anchor = page.locator('div.woo-tab-nav a[href^="/u/"]').first
+        await profile_anchor.wait_for(timeout=5000)
 
-            print("=" * 40)
-            print(f"用户名: {self.username}")
-            print(f"主页地址: {self.user_url}")
-            print("=" * 40)
+        href = await profile_anchor.get_attribute("href")
+        userid = href.split("/")[-1]
+        user_url = f"https://weibo.com{href}" if href.startswith("/") else href
+
+        username_div = profile_anchor.locator('.woo-tab-item-main')
+        username = await username_div.get_attribute("aria-label")
+
+        print("=" * 40)
+        print(f"用户名: {username}")
+        print(f"主页地址: {user_url}")
+        print("=" * 40)
+
+    except Exception as e:
+        print(f"提取用户信息失败: {e}")
+
+
+async def login(context, page):
+    context.on("response", handle_response)
+
+    print("正在访问微博首页...")
+    await page.goto(f"https://{site}")
+
+    # 6. 状态判断及操作全部 await
+    # is_visible() 需要 await
+    login_link = page.get_by_role("link", name="johnjohn01", exact=True)
+    if await login_link.is_visible():
+        print(">>> 状态：已登录")
+        await extract_user_info(page)
+    else:
+        # 尝试登录功能
+        print("1. 点击登录按钮...")
+        # async 上下文管理器
+        async with page.expect_popup() as page1_info:
+            await page.get_by_role("button", name="登录/注册").click()
+
+        # 获取弹出页面的句柄需要 await value
+        page1 = await page1_info.value
+        print("2. 扫码窗口已弹出，请扫码...")
+
+        try:
+            await page.wait_for_url(
+                re.compile(r"^https://weibo\.com/?$"),
+                timeout=0,
+                wait_until="domcontentloaded"
+            )
+            print("3. 登录成功，跳转完成！")
+            await extract_user_info(page)
 
         except Exception as e:
-            print(f"提取用户信息失败: {e}")
+            print(f"登录过程出错: {e}")
 
-    async def login(self):
-        page = self.context.pages[0]
-        # 5. 监听事件不需要 await，但 handler 本身必须是 async
-        self.context.on("response", self.handle_response)
 
-        print("正在访问微博首页...")
-        await page.goto(f"https://{self.site}")
-
-        # 6. 状态判断及操作全部 await
-        # is_visible() 需要 await
-        login_link = page.get_by_role("link", name="johnjohn01", exact=True)
-        if await login_link.is_visible():
-            print(">>> 状态：已登录")
-            await self.extract_user_info(page)
-        else:
-            # 尝试登录功能
-            print("1. 点击登录按钮...")
-            # async 上下文管理器
-            async with page.expect_popup() as page1_info:
-                await page.get_by_role("button", name="登录/注册").click()
-
-            # 获取弹出页面的句柄需要 await value
-            page1 = await page1_info.value
-            print("2. 扫码窗口已弹出，请扫码...")
-
-            try:
-                await page.wait_for_url(
-                    re.compile(r"^https://weibo\.com/?$"),
-                    timeout=0,
-                    wait_until="domcontentloaded"
-                )
-                print("3. 登录成功，跳转完成！")
-                await self.extract_user_info(page)
-
-            except Exception as e:
-                print(f"登录过程出错: {e}")
-
-    async def save_cookies(self):
-        """
-        保存 Cookies
-        """
-        try:
-            # cookies() 需要 await
-            cookies_list = await self.context.cookies()
-            filtered = [c for c in cookies_list if self.site in c["domain"]]
-            cookie_string = "; ".join(f"{c['name']}={c['value']}" for c in filtered)
-            with open(self.COOKIE_FILE, "w", encoding="utf-8") as f:
-                f.write(cookie_string)
-            print("🍪 cookies 保存完成")
-            # os.system 是同步阻塞的，在严格异步编程中推荐 asyncio.create_subprocess_shell
-            # 但为了简单起见，这里保留 os.system，它会短暂阻塞 event loop
-            os.system("scp cookies/johnjohn01.txt root@rn:/root/pythonproject/weibo_tg_bot/cookies/")
-            print("🚀 服务器上传 OK")
-        except Exception as e:
-            print(f"保存 Header 字符串失败: {e}")
+async def save_cookies(context):
+    """
+    保存 Cookies
+    """
+    try:
+        # cookies() 需要 await
+        cookies_list = await context.cookies()
+        filtered = [c for c in cookies_list if site in c["domain"]]
+        cookie_string = "; ".join(f"{c['name']}={c['value']}" for c in filtered)
+        with open(COOKIE_FILE, "w", encoding="utf-8") as f:
+            f.write(cookie_string)
+        print("🍪 cookies 保存完成")
+        # os.system 是同步阻塞的，在严格异步编程中推荐 asyncio.create_subprocess_shell
+        # 但为了简单起见，这里保留 os.system，它会短暂阻塞 event loop
+        os.system("scp cookies/johnjohn01.txt root@rn:/root/pythonproject/weibo_tg_bot/cookies/")
+        print("🚀 服务器上传 OK")
+    except Exception as e:
+        print(f"保存 Header 字符串失败: {e}")
 
 
 # ================= 运行测试 =================
@@ -211,10 +206,8 @@ async def run():
             no_viewport=True,
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         )
-
-        weibo = WeiboLoginHandler(context)
-        await weibo.login()
-        await weibo.save_cookies()
+        await login(context, context.pages[0])
+        await save_cookies(context)
 
         print("\n>>> 程序挂起中，关闭窗口退出...")
         # 等待关闭事件

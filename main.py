@@ -17,15 +17,15 @@ async def main():
             headless=False,
             channel="msedge",
             # 这步操作直接去掉了“msedge 正受到自动测试软件的控制”的横幅
-            # ignore_default_args=["--enable-automation"],
+            ignore_default_args=["--enable-automation"],
             proxy=proxy,
             args=[
+                "--disable-blink-features=AutomationControlled",  # 最关键：禁用自动化控制特征
                 "--autoplay-policy=no-user-gesture-required",
                 "--mute-audio",
                 "--start-maximized"  # 启动时最大化
             ],
             no_viewport=True,  # 必须开启，否则 maximize 不生效，页面会受限于默认窗口大小
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         )
         weibo_page = context.pages[0]
         await login_weibo.login(context, weibo_page)

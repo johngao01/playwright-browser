@@ -4,6 +4,7 @@ import asyncio
 from playwright.async_api import ProxySettings, async_playwright
 import login_weibo
 import login_instagram
+import login_x
 
 
 async def main():
@@ -31,6 +32,8 @@ async def main():
         await login_weibo.login(context, weibo_page)
         instagram_page = await context.new_page()
         await login_instagram.login(context, instagram_page)
+        x_page = await context.new_page()
+        await login_x.login(context, x_page)
         await login_instagram.save_cookies(context)
         await login_weibo.save_cookies(context)
 

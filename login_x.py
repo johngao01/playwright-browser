@@ -132,6 +132,7 @@ async def login(context, page):
 
     await page.goto("https://x.com/")
     print("正在检测登录状态...")
+    await asyncio.sleep(5)
     if await page.get_by_role("link", name='个人资料').is_visible():
         print("已登录 X，无需重复登录")
     else:

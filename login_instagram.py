@@ -5,12 +5,14 @@ import os
 import asyncio
 import aiofiles
 from playwright.async_api import async_playwright, ProxySettings
+from pydash import get
 
 site = "instagram.com"
 username = 'neverblock11'
 password = 'swdawfadffg42158'
 COOKIE_FILE = f'cookies/{username}.txt'
 user_url = 'https://www.instagram.com/{}/'.format(username)
+save_dir = 'data/instagram/json/'
 
 
 async def save_json(path, data):
@@ -49,14 +51,19 @@ def extract_posts_recursively(data):
     return found_posts
 
 
-async def process_and_save_post(post, save_dir):
+async def process_and_save_post(post):
     """
     处理并保存单个帖子（作为并发任务单元）
     """
     try:
-        author_username = post['user']['username']
-        code = post['code']
-        json_path = os.path.join(save_dir, author_username, f'{code}.json')
+        author_username = get(post, 'user.username')
+        code = get(post, 'code')
+        following = get(post, 'user.friendship_status.following')
+        if following:
+            following = 'following'
+        else:
+            following = 'explore'
+        json_path = os.path.join(save_dir, following, author_username, f'{code}.json')
 
         await save_json(json_path, post)
 
@@ -92,7 +99,7 @@ async def handle_response(response):
             try:
                 user = data['data']['user']
                 profile_name = user['username']
-                save_path = os.path.join('data/instagram/profiles/json', profile_name, f'{profile_name}.json')
+                save_path = os.path.join('data/instagram/json/profiles', f'{profile_name}.json')
 
                 # 异步保存
                 await save_json(save_path, user)
@@ -101,13 +108,6 @@ async def handle_response(response):
                 pass
 
         else:
-            # === 处理帖子列表 ===
-            if 'PolarisProfilePostsQuery' in post_body_str:
-                save_dir = f'data/instagram/profiles/json/'
-            elif 'PolarisProfilePostsTabContentQuery_connection' in post_body_str:
-                save_dir = f'data/instagram/profiles/json/'
-            else:
-                save_dir = f'data/instagram/explore/json/'
 
             # 提取数据 (CPU)
             profile_posts = extract_posts_recursively(data)
@@ -116,7 +116,7 @@ async def handle_response(response):
 
             # === 并发保存 (IO) ===
             # 创建所有保存任务
-            tasks = [process_and_save_post(post, save_dir) for post in profile_posts]
+            tasks = [process_and_save_post(post) for post in profile_posts]
 
             # 并发执行
             if tasks:

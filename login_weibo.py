@@ -6,9 +6,11 @@ import asyncio
 from datetime import datetime
 import aiofiles
 from playwright.async_api import async_playwright
+from pydash import get
 
 site = "weibo.com"
 COOKIE_FILE = 'cookies/johnjohn01.txt'
+save_dir = 'data/weibo/json'
 
 
 def standardize_date(created_at):
@@ -33,16 +35,20 @@ async def save_json(path, data):
         print(f"异步保存文件失败 {path}: {e}")
 
 
-async def parse_weibo(weibo, save_dir):
+async def parse_weibo(weibo):
     """
     异步解析并保存单条微博
     """
     user = weibo.get('user', {})
     author_name = user.get('screen_name', '未知作者')
     idstr = str(weibo.get('id', ''))
-
+    following = get(weibo, 'user.following')
+    if following:
+        following = 'following'
+    else:
+        following = 'explore'
     # 构造路径
-    json_path = os.path.join(save_dir, author_name, f'{idstr}.json')
+    json_path = os.path.join(save_dir, following, author_name, f'{idstr}.json')
 
     # 异步写入文件
     await save_json(json_path, weibo)
@@ -64,7 +70,7 @@ async def parse_weibo(weibo, save_dir):
     print("-" * 50)
 
 
-async def parse_weibo_list(weibo_list, save_dir):
+async def parse_weibo_list(weibo_list):
     """
     并发处理微博列表
     """
@@ -77,7 +83,7 @@ async def parse_weibo_list(weibo_list, save_dir):
     tasks = []
     for i, weibo in enumerate(weibo_list):
         # 将每个微博的处理封装为一个 Task
-        tasks.append(parse_weibo(weibo, save_dir))
+        tasks.append(parse_weibo(weibo))
 
     # 使用 gather 并发执行所有保存任务，大大加快速度
     if tasks:
@@ -108,24 +114,20 @@ async def handle_response(response):
     if '/ajax/profile/info?uid=' in response.url:
         try:
             profile_username = data['data']['user']['screen_name']
-            save_dir = f'data/weibo/profiles/json/'
-            json_path = os.path.join(save_dir, profile_username, f'{profile_username}.json')
+            json_path = os.path.join(f'data/weibo/json/profiles/', f'{profile_username}.json')
             await save_json(json_path, data)
             print(f"已保存用户 {profile_username} 的信息 -> {json_path}")
         except Exception as e:
             print(f"保存用户信息出错: {e}")
 
     elif "unreadfriendstimeline" in response.url:
-        save_dir = f'data/weibo/explore/json/'
-        await parse_weibo_list(data.get('statuses', []), save_dir)
+        await parse_weibo_list(data.get('statuses', []))
 
     elif 'ajax/statuses/mymblog?uid=' in response.url:
-        save_dir = f'data/weibo/profiles/json/'
-        await parse_weibo_list(data.get('data', {}).get('list', []), save_dir)
+        await parse_weibo_list(data.get('data', {}).get('list', []))
 
     elif 'friendstimeline' in response.url or 'groupstimeline' in response.url:
-        save_dir = f'data/weibo/profiles/json/'
-        await parse_weibo_list(data.get('statuses', []), save_dir)
+        await parse_weibo_list(data.get('statuses', []))
 
 
 async def extract_user_info(page):

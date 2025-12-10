@@ -10,9 +10,9 @@ from pydash import get
 
 # X 的核心 Cookie 依然基于 twitter.com，但访问的是 x.com
 site_keywords = ["x.com", "twitter.com"]
-username = 'johngaogao'  # 替换你的用户名
-password = 'your_password'  # 替换你的密码
-COOKIE_FILE = f'cookies/{username}_x.txt'
+username = 'johngaogao'
+password = 'belief1314*'
+COOKIE_FILE = f'cookies/{username}.txt'
 save_dir = 'data/x/json'
 
 

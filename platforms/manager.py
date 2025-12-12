@@ -276,7 +276,7 @@ class DownloadManager:
 
         for platform in self.platforms:
             files = platform.scan_files()
-            console.print(f"  - [{platform.name}]: 发现 {len(files)} 个文件")
+            console.print(f"  - {platform.name}: 发现 {len(files)} 个文件")
             for f in files:
                 post = platform.parse_file(f)
                 if post:

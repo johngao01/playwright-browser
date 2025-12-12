@@ -2,9 +2,9 @@
 import asyncio
 
 from playwright.async_api import ProxySettings, async_playwright
-import login_weibo
-import login_instagram
-import login_x
+from platforms.login import login_weibo
+from platforms.login import login_instagram
+from platforms.login import login_x
 
 
 async def main():

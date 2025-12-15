@@ -178,6 +178,25 @@ async def save_cookies(context):
         async with aiofiles.open(COOKIE_FILE, "w", encoding="utf-8") as f:
             await f.write(cookie_string)
 
+        # 2. 异步执行 SCP 命令
+        # 使用 create_subprocess_shell 替代 os.system
+        print("🚀 开始上传服务器...")
+        cmd = "scp cookies/neverblock11.txt root@rn:/root/pythonproject/weibo_tg_bot/cookies/"
+
+        process = await asyncio.create_subprocess_shell(
+            cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        # 等待命令结束
+        stdout, stderr = await process.communicate()
+
+        if process.returncode == 0:
+            print("🚀 服务器上传 OK")
+        else:
+            print(f"❌ 上传失败: {stderr.decode().strip()}")
+
         print(f"🍪 Instagram cookies 保存完成")
     except Exception as e:
         print(f"保存失败: {e}")

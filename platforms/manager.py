@@ -156,14 +156,14 @@ class DownloadManager:
                     avg_speed = (total_len / duration) if duration > 0 else 0
 
                     media.size = total_len
-                    media.human_readable_size = get_human_readable_size(total_len)
-                    media.save_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    media.human_readable_size = get_human_readable_size(os.path.getsize(filepath))
+                    media.save_time = datetime.fromtimestamp(os.path.getmtime(filepath)).strftime('%Y-%m-%d %H:%M:%S')
 
                     if task_id is not None: progress.remove_task(task_id)
                     task_id = None
                     console.print(
                         f"[green]✔[/] {icon} {relative_display_path} "
-                        f"| {media.human_readable_size} | {get_human_readable_size(avg_speed)}/s | {duration:.1f}s"
+                        f"| {media.human_readable_size} | {get_human_readable_size(avg_speed)}/s | {duration:.2f} s"
                     )
                     return True, True
 

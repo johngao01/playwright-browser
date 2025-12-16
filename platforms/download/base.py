@@ -7,6 +7,7 @@ class BasePlatform(ABC):
     def __init__(self, name):
         self.name = name
         self.base_dir = f'data/{name}'
+        self.json_dir = f'data/{name}/json'
         self.download_dir = f'data/{name}/download'
 
     @property

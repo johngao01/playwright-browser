@@ -31,16 +31,12 @@ class WeiboPlatform(BasePlatform):
         }
 
     def scan_files(self) -> List[str]:
-        if not os.path.exists(self.base_dir):
-            console.print(f"[red]目录不存在: {self.base_dir}[/red]")
-            return []
-
-        json_dir = os.path.join(self.base_dir, 'json')
-        if not os.path.exists(json_dir):
+        if not os.path.exists(self.json_dir):
+            console.print(f"[red]目录不存在: {self.json_dir}[/red]")
             return []
 
         files_to_process = []
-        for root, dirs, files in os.walk(json_dir):
+        for root, dirs, files in os.walk(self.json_dir):
             for file in files:
                 if file.endswith('.json'):
                     files_to_process.append(os.path.join(root, file))

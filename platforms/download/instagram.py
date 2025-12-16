@@ -26,20 +26,15 @@ class InstagramPlatform(BasePlatform):
         }
 
     def scan_files(self) -> List[str]:
-        if not os.path.exists(self.base_dir):
-            console.print(f"[red]目录不存在: {self.base_dir}[/red]")
+        if not os.path.exists(self.json_dir):
+            console.print(f"[red]目录不存在: {self.json_dir}[/red]")
             return []
 
         files_to_process = []
-        for root, dirs, files in os.walk(self.base_dir):
+        for root, dirs, files in os.walk(self.json_dir):
             for file in files:
                 if not file.endswith('.json'): continue
                 path = os.path.join(root, file)
-                try:
-                    user_folder = path.split(os.sep)[-2]
-                except IndexError:
-                    continue
-                if file.startswith(user_folder): continue
                 files_to_process.append(path)
         return files_to_process
 

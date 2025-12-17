@@ -271,6 +271,8 @@ class DownloadManager:
 
     async def run(self):
         all_posts = []
+        pending_posts = []
+        skipped_count = 0
         self.start_time = time.time()
         console.print("[yellow]正在扫描所有平台目录...[/yellow]")
 
@@ -278,23 +280,19 @@ class DownloadManager:
             files = platform.scan_files()
             console.print(f"  - {platform.name}: 发现 {len(files)} 个文件")
             for f in files:
-                post = platform.parse_file(f)
-                if post:
-                    all_posts.append((platform, post))
-
-        total_posts = len(all_posts)
-        pending_posts = []
-        skipped_count = 0
-
-        for platform, post in all_posts:
-            if post.get_unique_id() in self.history:
-                skipped_count += 1
-                self._update_stats(platform.name, 'skip_post')
-            else:
-                pending_posts.append((platform, post))
+                post_id = os.path.splitext(os.path.basename(f))[0]
+                unique_id = f"{platform.name}_{post_id}"
+                all_posts.append(unique_id)
+                if unique_id in self.history:
+                    skipped_count += 1
+                    self._update_stats(platform.name, 'skip_post')
+                else:
+                    post = platform.parse_file(f)
+                    if post:
+                        pending_posts.append((platform, post))
 
         console.print(Panel(
-            f"共扫描到 [bold cyan]{total_posts}[/bold cyan] 个 Post\n"
+            f"共扫描到 [bold cyan]{len(all_posts)}[/bold cyan] 个 Post\n"
             f"✅ [green]已完成: {skipped_count}[/green]\n"
             f"📥 [bold yellow]需下载: {len(pending_posts)}[/bold yellow]",
             title="扫描报告",

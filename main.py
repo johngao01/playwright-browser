@@ -28,6 +28,7 @@ async def main():
             ],
             no_viewport=True,  # 必须开启，否则 maximize 不生效，页面会受限于默认窗口大小
         )
+        context.set_default_timeout(0)
         weibo_page = context.pages[0]
         await login_weibo.login(context, weibo_page)
         instagram_page = await context.new_page()

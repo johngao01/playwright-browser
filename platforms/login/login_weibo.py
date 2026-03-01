@@ -160,7 +160,7 @@ async def login(context, page):
 
     login_link = page.get_by_role("link", name="johnjohn01", exact=True)
     if await login_link.is_visible():
-        print(">>> 状态：已登录")
+        print(">>> 状态：微博 已登录")
         await extract_user_info(page)
     else:
         print("1. 点击登录按钮...")
@@ -196,11 +196,11 @@ async def save_cookies(context):
         # 1. 异步写文件
         async with aiofiles.open(COOKIE_FILE, "w", encoding="utf-8") as f:
             await f.write(cookie_string)
-        print("🍪 cookies 保存完成")
+        # print("🍪 微博 cookies 保存完成")
 
         # 2. 异步执行 SCP 命令
         # 使用 create_subprocess_shell 替代 os.system
-        print("🚀 开始上传服务器...")
+        # print("🚀 🍪 微博 cookies 开始上传服务器...")
         cmd = "scp cookies/johnjohn01.txt root@rn:/root/pythonproject/weibo_tg_bot/cookies/"
 
         process = await asyncio.create_subprocess_shell(
@@ -213,9 +213,9 @@ async def save_cookies(context):
         stdout, stderr = await process.communicate()
 
         if process.returncode == 0:
-            print("🚀 服务器上传 OK")
+            print("🚀 🍪 微博 cookies 服务器上传 OK")
         else:
-            print(f"❌ 上传失败: {stderr.decode().strip()}")
+            print(f"❌ 🍪 微博 cookies 上传失败: {stderr.decode().strip()}")
 
     except Exception as e:
         print(f"保存/上传失败: {e}")

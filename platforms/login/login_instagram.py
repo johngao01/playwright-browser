@@ -136,9 +136,9 @@ async def login(context, page):
     login_link = page.get_by_role("link", name=username, exact=True)
 
     if await login_link.is_visible():
-        print(">>> 已登录")
+        print(">>> Instagram 已登录")
     else:
-        print(">>> 未登录，开始尝试自动登录...")
+        print(">>> Instagram 未登录，开始尝试自动登录...")
         await page.get_by_role("textbox", name="电话号码、账号或邮箱").click()
         await page.get_by_role("textbox", name="电话号码、账号或邮箱").fill(username)  # 使用变量
         await page.get_by_role("textbox", name="密码").click()
@@ -180,7 +180,6 @@ async def save_cookies(context):
 
         # 2. 异步执行 SCP 命令
         # 使用 create_subprocess_shell 替代 os.system
-        print("🚀 开始上传服务器...")
         cmd = "scp cookies/neverblock11.txt root@rn:/root/pythonproject/weibo_tg_bot/cookies/"
 
         process = await asyncio.create_subprocess_shell(
@@ -193,13 +192,12 @@ async def save_cookies(context):
         stdout, stderr = await process.communicate()
 
         if process.returncode == 0:
-            print("🚀 服务器上传 OK")
+            print("🚀 🍪 Instagram Cookies 服务器上传 OK")
         else:
-            print(f"❌ 上传失败: {stderr.decode().strip()}")
+            print(f"❌ 🍪 Instagram Cookies 服务器上传失败: {stderr.decode().strip()}")
 
-        print(f"🍪 Instagram cookies 保存完成")
     except Exception as e:
-        print(f"保存失败: {e}")
+        print(f"保存/上传失败: {e}")
 
 
 # ================= 运行测试 =================

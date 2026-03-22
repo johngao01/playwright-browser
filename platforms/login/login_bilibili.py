@@ -149,7 +149,7 @@ async def save_cookies(context):
     try:
         cookies_list = await context.cookies()
         filtered = [c for c in cookies_list if site in c["domain"]]
-        cookie_string = "; ".join(f"{c['name']}={c['value']}" for c in filtered)
+        cookie_string = ";".join(f"{c['name']}={c['value']}" for c in filtered)
 
         os.makedirs(os.path.dirname(COOKIE_FILE), exist_ok=True)
 

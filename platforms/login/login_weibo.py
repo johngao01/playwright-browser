@@ -191,7 +191,7 @@ async def save_cookies(context):
     try:
         cookies_list = await context.cookies()
         filtered = [c for c in cookies_list if site in c["domain"]]
-        cookie_string = "; ".join(f"{c['name']}={c['value']}" for c in filtered)
+        cookie_string = ";".join(f"{c['name']}={c['value']}" for c in filtered)
 
         # 1. 异步写文件
         async with aiofiles.open(COOKIE_FILE, "w", encoding="utf-8") as f:

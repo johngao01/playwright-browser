@@ -28,15 +28,15 @@ async def main():
             ],
             no_viewport=True,  # 必须开启，否则 maximize 不生效，页面会受限于默认窗口大小
         )
-        # weibo_page = context.pages[0]
-        # await login_weibo.login(context, weibo_page)
-        # instagram_page = await context.new_page()
-        # await login_instagram.login(context, instagram_page)
+        weibo_page = context.pages[0]
+        await login_weibo.login(context, weibo_page)
+        instagram_page = await context.new_page()
+        await login_instagram.login(context, instagram_page)
         bilibili_page = await context.new_page()
         await login_bilibili.login(context, bilibili_page)
 
-        # await login_instagram.save_cookies(context)
-        # await login_weibo.save_cookies(context)
+        await login_instagram.save_cookies(context)
+        await login_weibo.save_cookies(context)
         await login_bilibili.save_cookies(context)
 
         await context.wait_for_event("close", timeout=0)

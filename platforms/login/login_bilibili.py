@@ -58,26 +58,24 @@ async def process_and_save_post(post):
     try:
         if "type" in post and 'id_str' in post:
             author_username = get(post, 'modules.module_author.name')
+            user_id = get(post, 'modules.module_author.mid')
             code = get(post, 'id_str')
+            post['user_id'] = user_id
+            post['username'] = author_username
             following = get(post, 'modules.module_author.following')
-            if following:
-                following = 'following'
-            else:
-                following = 'explore'
-            json_path = os.path.join(save_dir, following, author_username, 'dynamic', f'{code}.json')
+            json_path = os.path.join(save_dir, author_username, f'Dynamic_{code}.json')
             await save_json(json_path, post)
             print(f"💾 Saved Dynamic: @{author_username} -> https://t.bilibili.com/{code}")
         elif 'bvid' in post and 'author' in post:
             author_username = get(post, 'author')
             code = get(post, 'bvid')
-            following = 'explore'
-            json_path = os.path.join(save_dir, following, author_username, 'post', f'{code}.json')
+            json_path = os.path.join(save_dir, author_username, f'Video_{code}.json')
             await save_json(json_path, post)
             print(f"💾 Saved Video: @{author_username} -> https://www.bilibili.com/video/{code}")
         elif 'opus_id' in post and 'cover' in post:
             code = get(post, 'opus_id')
             content = get(post, 'content') or ''
-            json_path = os.path.join(save_dir, 'opus', f'{code}.json')
+            json_path = os.path.join(save_dir, 'opus', f'Opus_{code}.json')
 
             await save_json(json_path, post)
             print(f"💾 Saved opus: {content} -> www.bilibili.com/opus/{code}")

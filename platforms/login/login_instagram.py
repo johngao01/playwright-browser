@@ -8,9 +8,9 @@ from playwright.async_api import async_playwright, ProxySettings
 from pydash import get
 
 site = "instagram.com"
-username = 'neverblock11'
-password = 'swdawfadffg42158'
-COOKIE_FILE = f'cookies/{username}.txt'
+username = 'deer.17131199'
+password = 'belief1314*'
+COOKIE_FILE = f'cookies/neverblock11.txt'
 user_url = 'https://www.instagram.com/{}/'.format(username)
 save_dir = 'data/instagram/json/'
 

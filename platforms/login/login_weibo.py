@@ -201,7 +201,7 @@ async def save_cookies(context):
         # 2. 异步执行 SCP 命令
         # 使用 create_subprocess_shell 替代 os.system
         # print("🚀 🍪 微博 cookies 开始上传服务器...")
-        cmd = "scp cookies/johnjohn01.txt root@rn:/root/pythonproject/weibo_tg_bot/cookies/"
+        cmd = "scp cookies/johnjohn01.txt root@rn:/root/pythonproject/Avelen/cookies/"
 
         process = await asyncio.create_subprocess_shell(
             cmd,

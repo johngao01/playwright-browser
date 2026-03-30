@@ -1,4 +1,5 @@
 # login_bilibili.py
+import time
 import traceback
 import json
 import os
@@ -10,7 +11,7 @@ from pydash import get
 site = "bilibili.com"
 username = '17601319702'
 password = '1314wan*'
-COOKIE_FILE = f'cookies/bilibili.txt'
+COOKIE_FILE = f'cookies/bl.txt'
 user_url = 'https://www.bilibili.com/{}/'.format(username)
 save_dir = 'data/bilibili/json/'
 
@@ -149,17 +150,35 @@ async def save_cookies(context):
     try:
         cookies_list = await context.cookies()
         filtered = [c for c in cookies_list if site in c["domain"]]
-        cookie_string = ";".join(f"{c['name']}={c['value']}" for c in filtered)
 
         os.makedirs(os.path.dirname(COOKIE_FILE), exist_ok=True)
 
         # 异步写入 Cookie
         async with aiofiles.open(COOKIE_FILE, "w", encoding="utf-8") as f:
-            await f.write(cookie_string)
+            await f.write("# Netscape HTTP Cookie File\n")
+            for c in filtered:
+                domain = c["domain"]
+                include_subdomains = "TRUE" if domain.startswith(".") else "FALSE"
+                path = c["path"]
+                secure = "TRUE" if c["secure"] else "FALSE"
+                expiry = str(int(c.get("expires", time.time() + 3600)))
+                name = c["name"]
+                value = c["value"]
+
+                line = "\t".join([
+                    domain,
+                    include_subdomains,
+                    path,
+                    secure,
+                    expiry,
+                    name,
+                    value
+                ])
+                await f.write(line + "\n")
 
         # 2. 异步执行 SCP 命令
         # 使用 create_subprocess_shell 替代 os.system
-        cmd = "scp cookies/bilibili.txt root@rn:/root/pythonproject/weibo_tg_bot/cookies/"
+        cmd = "scp cookies/bl.txt root@rn:/root/pythonproject/Avelen/cookies/"
 
         process = await asyncio.create_subprocess_shell(
             cmd,

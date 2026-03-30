@@ -139,11 +139,11 @@ async def login(context, page):
         print(">>> Instagram 已登录")
     else:
         print(">>> Instagram 未登录，开始尝试自动登录...")
-        await page.get_by_role("textbox", name="电话号码、账号或邮箱").click()
-        await page.get_by_role("textbox", name="电话号码、账号或邮箱").fill(username)  # 使用变量
+        await page.get_by_role("textbox", name="手机号、账号或邮箱").click()
+        await page.get_by_role("textbox", name="手机号、账号或邮箱").fill(username)  # 使用变量
         await page.get_by_role("textbox", name="密码").click()
         await page.get_by_role("textbox", name="密码").fill(password)  # 使用变量
-        await page.get_by_role("button", name="登录").click()
+        await page.get_by_role("button", name="登录", exact=True).click()
 
         # 处理弹窗
         try:

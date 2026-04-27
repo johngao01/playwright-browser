@@ -10,7 +10,7 @@ from pydash import get
 site = "instagram.com"
 username = 'deer.17131199'
 password = 'belief1314*'
-COOKIE_FILE = f'cookies/neverblock11.txt'
+COOKIE_FILE = f'cookies/{username}.txt'
 user_url = 'https://www.instagram.com/{}/'.format(username)
 save_dir = 'data/instagram/json/'
 
@@ -133,9 +133,9 @@ async def login(context, page):
     await page.goto(f"https://www.{site}/")
     print("正在检测登录状态...")
 
-    login_link = page.get_by_role("link", name=username, exact=True)
+    switch_button = page.get_by_role("button", name="切换")
 
-    if await login_link.is_visible():
+    if await switch_button.is_visible():
         print(">>> Instagram 已登录")
     else:
         print(">>> Instagram 未登录，开始尝试自动登录...")
